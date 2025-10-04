@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Productivity Chain Tracker (4-Level)</title>
+    <title>Daily Productivity Chain Tracker (Google Sign-In Only)</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configure Tailwind for custom styles and Inter font -->
+    <!-- Font Awesome for Google Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJzL3m3M/w2l33gWJv2WcT1gTfJ2g2eK/T5O4pL+w5Y5d5T5Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
     <script>
         tailwind.config = {
             theme: {
@@ -77,41 +79,14 @@
         }
 
         /* --- 4 LEVEL STATUS STYLES --- */
-        
-        /* Dark Green: Happy with work (Maximum Productivity) */
-        .status-dark-green {
-            background-color: #059669; /* Emerald 600 */
-            color: #ffffff !important;
-            box-shadow: 0 6px 12px -6px rgba(5, 150, 105, 0.3);
-        }
-        
-        /* Light Green: Did work, not satisfied (Satisfactory Productivity) */
-        .status-light-green {
-            background-color: #a7f3d0; /* Emerald 200 */
-            color: #064e3b !important; /* Dark text for contrast */
-            box-shadow: 0 6px 12px -6px rgba(167, 243, 208, 0.3);
-        }
-
-        /* Light Red: Did work, very little (Minimal Productivity) */
-        .status-light-red {
-            background-color: #fecaca; /* Red 200 */
-            color: #7f1d1d !important; /* Dark text for contrast */
-            box-shadow: 0 6px 12px -6px rgba(254, 202, 202, 0.3);
-        }
-
-        /* Deep Red: Wasted time (Maximum Unproductive) */
-        .status-deep-red {
-            background-color: #ef4444; /* Red 500 */
-            color: #ffffff !important;
-            box-shadow: 0 6px 12px -6px rgba(239,68,68,0.3);
-        }
-
+        .status-dark-green { background-color: #059669; color: #ffffff !important; box-shadow: 0 6px 12px -6px rgba(5, 150, 105, 0.3); }
+        .status-light-green { background-color: #a7f3d0; color: #064e3b !important; box-shadow: 0 6px 12px -6px rgba(167, 243, 208, 0.3); }
+        .status-light-red { background-color: #fecaca; color: #7f1d1d !important; box-shadow: 0 6px 12px -6px rgba(254, 202, 202, 0.3); }
+        .status-deep-red { background-color: #ef4444; color: #ffffff !important; box-shadow: 0 6px 12px -6px rgba(239,68,68,0.3); }
         /* --- END 4 LEVEL STATUS STYLES --- */
 
 
-        .today {
-            border: 3px solid #3b82f6;
-        }
+        .today { border: 3px solid #3b82f6; }
         
         .month-header {
             grid-column: 1 / -1;
@@ -130,7 +105,6 @@
             border-radius: 6px;
         }
         
-        /* smaller mobile spacing */
         @media (max-width:640px) {
             .calendar-grid { gap:6px; grid-template-columns: repeat(auto-fill, minmax(42px,1fr)); }
         }
@@ -139,13 +113,12 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, Timestamp, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // === FIREBASE CONFIGURATION (FOR CLOUD SYNC) ===
-        // This configuration uses the corrected API Key and minimal necessary fields.
         const firebaseConfig = {
-          apiKey: "AIzaSyD4xb2VjkVI6LBnfr_R0IMdRtMNnl5K2uI",
+          apiKey: "AIzaSyD4xb2VjkVI6LBnfr_R0IMdRtMNnl5K2uI", // CORRECT API KEY
           authDomain: "productivity-tracker-53afe.firebaseapp.com",
           projectId: "productivity-tracker-53afe",
           storageBucket: "productivity-tracker-53afe.appspot.com",
@@ -156,29 +129,43 @@
         const appId = firebaseConfig.projectId; 
         
         // State
-        let useFirebase = true; 
-        let app = null, db = null, auth = null;
+        let app, db, auth;
         let currentUserId = null;
         let isAuthReady = false;
         let dateStatuses = {};
 
-        // --- Utility Functions ---
+        const DATA_COLLECTION_NAME = 'productivity_tracker';
+        
+        // --- AUTHENTICATION FUNCTIONS ---
+        const googleProvider = new GoogleAuthProvider();
 
-        /**
-         * Formats a Date object to YYYY-MM-DD string.
-         */
+        const signInWithGoogle = async () => {
+            try {
+                // Signs the user in with Google using a popup.
+                await signInWithPopup(auth, googleProvider);
+            } catch (error) {
+                console.error("Google Sign-In Failed:", error);
+                document.getElementById('status-message').textContent = 'Sign-In Failed. Check console/network.';
+            }
+        };
+
+        const handleSignOut = async () => {
+            try {
+                // Signs the user out. onAuthStateChanged listener handles UI update.
+                await signOut(auth);
+            } catch (error) {
+                console.error("Sign-Out Failed:", error);
+            }
+        };
+
+        // --- UTILITY AND DATA FUNCTIONS ---
+
         const formatDate = d => d.toISOString().split('T')[0];
 
-        /**
-         * Generates an array of dates from the fixed start date (Sept 27, 2025) until June 30th, 2026.
-         */
         const generateDateRange = () => {
-            // FIX: Set a fixed start date (September 27, 2025) to ensure the chain starts correctly.
-            const startDate = new Date(2025, 8, 27); // Month 8 is September (0-indexed)
+            const startDate = new Date(2025, 8, 27); 
             startDate.setHours(0,0,0,0); 
-
-            // End date remains dynamic relative to the fixed start date's year
-            const endDate = new Date(startDate.getFullYear() + (startDate.getMonth() > 5 ? 1 : 0), 5, 30); // June 30 next year
+            const endDate = new Date(startDate.getFullYear() + (startDate.getMonth() > 5 ? 1 : 0), 5, 30);
             endDate.setHours(0,0,0,0);
             
             const out = []; 
@@ -187,23 +174,18 @@
             return out;
         };
         
-        /**
-         * Renders the calendar grid based on the generated dates and current statuses.
-         */
         const renderCalendar = (dates) => {
             const container = document.getElementById('calendar-container');
             if (!container) return;
-
             container.innerHTML = '';
             const todayStr = formatDate(new Date());
             let currentMonth = null;
+            const signedIn = !!currentUserId;
 
             dates.forEach(date => {
                 const ds = formatDate(date);
-                // Use month and year for unique month identifier
                 const month = date.getMonth() + '-' + date.getFullYear(); 
 
-                // Check if the month has changed to insert a header
                 if (currentMonth !== month) {
                     const mh = document.createElement('div');
                     mh.className = 'month-header';
@@ -215,193 +197,182 @@
                 const tile = document.createElement('div');
                 tile.className = 'date-tile';
                 tile.dataset.date = ds;
+                if (ds === todayStr) tile.classList.add('today');
 
-                // Add today marker
-                if (ds === todayStr) {
-                    tile.classList.add('today');
-                }
-
-                // Add the content container
                 const content = document.createElement('div');
                 content.className = 'date-tile-content';
                 content.textContent = date.getDate();
                 tile.appendChild(content);
 
-                // Apply status color based on 4-level system
                 const st = dateStatuses[ds];
                 if (st === 'dark-green') tile.classList.add('status-dark-green');
                 else if (st === 'light-green') tile.classList.add('status-light-green');
                 else if (st === 'light-red') tile.classList.add('status-light-red');
                 else if (st === 'deep-red') tile.classList.add('status-deep-red');
 
-                // Add click listener
-                tile.addEventListener('click', handleClick);
+                // Only allow clicking if signed in
+                if (signedIn) {
+                    tile.addEventListener('click', handleClick);
+                } else {
+                    // Visually indicate tiles are inactive if signed out
+                    tile.style.cursor = 'not-allowed';
+                    tile.style.opacity = '0.5';
+                    tile.style.pointerEvents = 'none';
+                }
                 
                 container.appendChild(tile);
             });
         };
 
-        /**
-         * Handles the click event, cycling through the 5 states (4 colors + null).
-         */
         const handleClick = (event) => {
-            // Ensure ready state
-            if (!isAuthReady || !currentUserId) {
-                console.warn('Click ignored: not ready. Refreshing...');
-                document.getElementById('status-message').textContent = 'Error: Not connected. Please reload the page.';
-                return;
-            }
-
+            if (!isAuthReady || !currentUserId) return;
             const tile = event.currentTarget;
             const dateString = tile.dataset.date;
 
-            // Decide next state based on current cache
             const cur = dateStatuses[dateString] || null;
             let next = null;
             
-            // 5-State Cycle Logic
             switch (cur) {
-                case null:
-                    next = 'dark-green'; // Neutral -> Dark Green (Happy)
-                    break;
-                case 'dark-green':
-                    next = 'light-green'; // Dark Green -> Light Green (Satisfied)
-                    break;
-                case 'light-green':
-                    next = 'light-red'; // Light Green -> Light Red (Minimal work)
-                    break;
-                case 'light-red':
-                    next = 'deep-red'; // Light Red -> Deep Red (Wasted time)
-                    break;
-                case 'deep-red':
-                    next = null; // Deep Red -> Neutral (Clear)
-                    break;
-                default:
-                    next = 'dark-green'; 
+                case null: next = 'dark-green'; break;
+                case 'dark-green': next = 'light-green'; break;
+                case 'light-green': next = 'light-red'; break;
+                case 'light-red': next = 'deep-red'; break;
+                case 'deep-red': next = null; break;
+                default: next = 'dark-green'; 
             }
-            
-            // Persist the change to storage (Firebase or localStorage)
             saveStatus(dateString, next);
         };
 
-        /**
-         * Saves the status to Firestore (cloud).
-         */
         const saveStatus = async (dateString, status) => {
             try {
-                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/productivity_tracker`, dateString);
+                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/${DATA_COLLECTION_NAME}`, dateString);
                 if (status) {
                     await setDoc(docRef, { status, timestamp: Timestamp.now() });
-                    console.log('Saved to Firestore:', dateString, status);
                 } else {
                     await deleteDoc(docRef);
-                    console.log('Deleted from Firestore:', dateString);
                 }
             } catch (err) {
                 console.error('Firestore save error:', err);
-                // This is the safety message if rules fail after auth succeeds
                 document.getElementById('status-message').textContent = 'Save Failed! Check Firebase Security Rules.';
             }
         };
         
-        /**
-         * Sets up the listener to fetch data from Firestore.
-         */
         const listenForUpdates = (userId) => {
             currentUserId = userId;
             const statusEl = document.getElementById('status-message');
 
-            const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/productivity_tracker`);
-            // Listen for changes in real-time (this naturally provides the delay)
+            const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/${DATA_COLLECTION_NAME}`);
             onSnapshot(collectionRef, (snapshot) => {
                 const newStatuses = {};
                 snapshot.forEach(docSnap => {
                     const d = docSnap.data();
-                    // Only accept the four valid status strings
                     if (['dark-green', 'light-green', 'light-red', 'deep-red'].includes(d.status)) {
                          newStatuses[docSnap.id] = d.status;
                     }
                 });
                 dateStatuses = newStatuses;
                 renderCalendar(generateDateRange());
-                console.log('Firestore snapshot applied.');
+                statusEl.textContent = 'Connected to Firestore — Data synchronized.';
             }, (err) => {
                 console.error('Snapshot error:', err);
                 statusEl.textContent = 'Error syncing with Firestore (check console).';
             });
         };
         
-        /**
-         * Main setup function.
-         */
+        // --- Initialization ---
         const setup = async () => {
-            const statusEl = document.getElementById('status-message');
-            
-            // Cloud Sync Mode
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                try { setLogLevel('debug'); } catch (e) { /* ignore */ } // Set log level
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            try { setLogLevel('debug'); } catch (e) { /* ignore */ }
 
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                    } else {
-                        // Sign in anonymously for a unique ID tied to the Firebase project
-                        const anon = await signInAnonymously(auth);
-                        currentUserId = anon.user.uid;
-                    }
+            // Set up event listeners for the new buttons
+            document.getElementById('google-sign-in-btn').addEventListener('click', signInWithGoogle);
+            document.getElementById('sign-out-btn').addEventListener('click', handleSignOut);
 
-                    if (currentUserId) {
-                        isAuthReady = true;
-                        document.getElementById('user-id').textContent = currentUserId;
-                        statusEl.textContent = 'Connected to Firestore — ready.';
-                        listenForUpdates(currentUserId);
-                    }
-                });
-            } catch (err) {
-                console.error('FATAL Firebase init error:', err);
-                // If init fails due to network or config, display clear error
-                statusEl.textContent = 'CONNECTION FAILED: Check API Key and Browser Console.';
-                document.getElementById('user-id').textContent = 'ERROR';
-            }
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // User is signed in (Google)
+                    currentUserId = user.uid;
+                    isAuthReady = true;
+                    document.getElementById('user-name').textContent = user.displayName || 'Google User';
+                    document.getElementById('user-id-display').textContent = user.uid;
+                    
+                    document.getElementById('auth-prompt').classList.add('hidden');
+                    document.getElementById('user-info').classList.remove('hidden');
+
+                    listenForUpdates(currentUserId);
+                } else {
+                    // User is signed out
+                    currentUserId = null;
+                    isAuthReady = false;
+                    dateStatuses = {}; // Clear status on sign-out
+                    
+                    document.getElementById('auth-prompt').classList.remove('hidden');
+                    document.getElementById('user-info').classList.add('hidden');
+                    document.getElementById('status-message').textContent = 'Please sign in with Google to start tracking.';
+                    
+                    renderCalendar(generateDateRange()); // Render empty, inactive calendar
+                }
+            });
         };
 
-        // Run setup on window load
         window.addEventListener('load', setup);
     </script>
 </head>
 <body class="flex justify-center items-start">
 
     <div class="panel p-6 bg-white shadow-lg rounded-xl">
-        <header class="mb-4 pb-3 border-b">
-            <h1 class="text-3xl font-extrabold text-gray-800">The Productivity Chain (4 Levels)</h1>
-            <p class="text-sm text-gray-500 mt-1">Visualize your consistency from September 27, 2025, until June 30, 2026.</p>
+        <header class="mb-4 pb-3 border-b flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-extrabold text-gray-800">The Productivity Chain</h1>
+                <p class="text-sm text-gray-500 mt-1">Cross-device consistency via Google Sign-In.</p>
+            </div>
+            
+            <div id="auth-controls" class="text-right">
+                <!-- User Info (Visible after sign-in) -->
+                <div id="user-info" class="hidden text-right">
+                    <p class="text-sm font-semibold text-gray-700">
+                        Welcome, <span id="user-name" class="text-blue-600"></span>!
+                    </p>
+                    <button id="sign-out-btn" class="mt-1 text-xs text-red-500 hover:text-red-700 font-medium transition duration-150">
+                        Sign Out
+                    </button>
+                </div>
+
+                <!-- Sign-in Prompt (Visible when signed out) -->
+                <div id="auth-prompt">
+                    <button id="google-sign-in-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 flex items-center">
+                        <i class="fab fa-google mr-2"></i>
+                        Sign in with Google
+                    </button>
+                </div>
+            </div>
         </header>
 
         <!-- Instructions and Status -->
         <div class="mb-4 p-3 bg-indigo-50 rounded-md border border-indigo-200">
             <div class="text-sm text-indigo-700 font-semibold">Instructions: Click to cycle through the 4 levels</div>
             <ul class="list-disc list-inside text-sm text-gray-700 mt-2 space-y-1">
-                <li>$\to$ <span class="font-bold text-emerald-600">Dark Green:</span> Happy with my work (Maximum Productivity).</li>
-                <li>$\to$ <span class="font-bold text-emerald-400">Light Green:</span> Did work, but not to my satisfaction level.</li>
-                <li>$\to$ <span class="font-bold text-red-400">Light Red:</span> Did work, but very little (Minimal Productivity).</li>
-                <li>$\to$ <span class="font-bold text-red-600">Deep Red:</span> Wasted time (Bad Work Day).</li>
-                <li>$\to$ Neutral (clears the status).</li>
+                <li>&rarr; <span class="font-bold text-emerald-600">Dark Green:</span> Happy with my work (Maximum Productivity).</li>
+                <li>&rarr; <span class="font-bold text-emerald-400">Light Green:</span> Did work, but not to my satisfaction level.</li>
+                <li>&rarr; <span class="font-bold text-red-400">Light Red:</span> Did work, but very little (Minimal Productivity).</li>
+                <li>&rarr; <span class="font-bold text-red-600">Deep Red:</span> Wasted time (Bad Work Day).</li>
+                <li>&rarr; Neutral (clears the status).</li>
             </ul>
         </div>
         
         <!-- User ID & Status Message -->
-        <div class="text-xs text-gray-500 mb-3">
+        <div class="text-xs text-gray-500 mb-3 flex items-center">
             <span id="status-message" class="font-medium text-blue-600">Initializing...</span>
-            <span class="ml-3">User: <span id="user-id" class="font-mono">—</span></span>
+            <span id="user-info-detail" class="ml-3">
+                User: <span id="user-name" class="font-medium text-gray-700">—</span> (ID: <span id="user-id-display" class="font-mono">—</span>)
+            </span>
         </div>
 
         <!-- Scroll wrapper; month headers are sticky within this -->
         <div id="calendar-scroll" class="rounded-md bg-white">
             <div id="calendar-container" class="calendar-grid p-3">
-                <!-- Calendar days will be rendered here by JavaScript -->
                 <div class="month-header">Loading calendar…</div>
             </div>
         </div>
