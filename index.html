@@ -139,31 +139,28 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, Timestamp, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // === FIREBASE CONFIGURATION (FOR CLOUD SYNC) ===
-        // This configuration is MANDATORY for permanent cloud saving.
+        // This configuration uses the corrected API Key and minimal necessary fields.
         const firebaseConfig = {
-          apiKey: "AIzaSyD4xb2vKjVl6lBnfr_R0lMdRtMMn15K2U",
+          apiKey: "AIzaSyD4xb2VjkVI6LBnfr_R0IMdRtMNnl5K2uI",
           authDomain: "productivity-tracker-53afe.firebaseapp.com",
           projectId: "productivity-tracker-53afe",
           storageBucket: "productivity-tracker-53afe.appspot.com",
           messagingSenderId: "1021027927345",
           appId: "1:1021027927345:web:38ead23d9f561aa1121c10",
-          measurementId: "G-CGM5WCT56R"
         };
-        // We will default to the provided config for deployment.
-        const appId = firebaseConfig.projectId; // Using Project ID as App ID is safe here
-        // Set initialAuthToken to null as we are using signInAnonymously() for anonymous access.
-        const initialAuthToken = null; 
+        
+        const appId = firebaseConfig.projectId; 
         
         // State
-        let useFirebase = true; // FORCE CLOUD MODE
+        let useFirebase = true; 
         let app = null, db = null, auth = null;
         let currentUserId = null;
         let isAuthReady = false;
-        let dateStatuses = {}; // { '2025-09-27': 'dark-green', ... }
+        let dateStatuses = {};
 
         // --- Utility Functions ---
 
@@ -302,7 +299,8 @@
                 }
             } catch (err) {
                 console.error('Firestore save error:', err);
-                document.getElementById('status-message').textContent = 'Save Failed! Check console for security rule errors.';
+                // This is the safety message if rules fail after auth succeeds
+                document.getElementById('status-message').textContent = 'Save Failed! Check Firebase Security Rules.';
             }
         };
         
@@ -364,8 +362,8 @@
                 });
             } catch (err) {
                 console.error('FATAL Firebase init error:', err);
-                // If init fails, display a clear error
-                statusEl.textContent = 'CONNECTION FAILED: Check Firebase Config and Console Errors.';
+                // If init fails due to network or config, display clear error
+                statusEl.textContent = 'CONNECTION FAILED: Check API Key and Browser Console.';
                 document.getElementById('user-id').textContent = 'ERROR';
             }
         };
