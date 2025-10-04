@@ -142,12 +142,9 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, Timestamp, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // === CONFIG AREA ===
-        // --------------------------------------------------------------------------
-        // YOUR LIVE FIREBASE CONFIGURATION (COPIED FROM FIREBASE PROJECT SETTINGS)
-        // This configuration enables cloud synchronization for permanent data storage.
-        // --------------------------------------------------------------------------
-        const providedFirebaseConfig = {
+        // === FIREBASE CONFIGURATION (FOR CLOUD SYNC) ===
+        // This configuration is MANDATORY for permanent cloud saving.
+        const firebaseConfig = {
           apiKey: "AIzaSyD4xb2vKjVl6lBnfr_R0lMdRtMMn15K2U",
           authDomain: "productivity-tracker-53afe.firebaseapp.com",
           projectId: "productivity-tracker-53afe",
@@ -156,16 +153,13 @@
           appId: "1:1021027927345:web:38ead23d9f561aa1121c10",
           measurementId: "G-CGM5WCT56R"
         };
+        // We will default to the provided config for deployment.
+        const appId = firebaseConfig.projectId; // Using Project ID as App ID is safe here
+        // Set initialAuthToken to null as we are using signInAnonymously() for anonymous access.
+        const initialAuthToken = null; 
         
-        // Canvas environment variables (if running in canvas) take precedence
-        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : providedFirebaseConfig;
-        const appId = (typeof __app_id !== 'undefined') ? __app_id : 'default-app-id';
-        const initialAuthToken = (typeof __initial_auth_token !== 'undefined') ? __initial_auth_token : null;
-        // =====================
-
         // State
-        // Check if we have a valid configuration to attempt Firebase connection
-        let useFirebase = Boolean(firebaseConfig.projectId && firebaseConfig.apiKey && firebaseConfig.projectId !== "productivity-tracker-53afe");
+        let useFirebase = true; // FORCE CLOUD MODE
         let app = null, db = null, auth = null;
         let currentUserId = null;
         let isAuthReady = false;
@@ -256,8 +250,8 @@
         const handleClick = (event) => {
             // Ensure ready state
             if (!isAuthReady || !currentUserId) {
-                console.warn('Click ignored: not ready.');
-                document.getElementById('status-message').textContent = 'Please wait for initialization...';
+                console.warn('Click ignored: not ready. Refreshing...');
+                document.getElementById('status-message').textContent = 'Error: Not connected. Please reload the page.';
                 return;
             }
 
@@ -294,142 +288,85 @@
         };
 
         /**
-         * Saves the status to either Firestore (cloud) or localStorage (local).
+         * Saves the status to Firestore (cloud).
          */
         const saveStatus = async (dateString, status) => {
-            if (useFirebase) {
-                try {
-                    const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/productivity_tracker`, dateString);
-                    if (status) {
-                        await setDoc(docRef, { status, timestamp: Timestamp.now() });
-                        console.log('Saved to Firestore:', dateString, status);
-                    } else {
-                        await deleteDoc(docRef);
-                        console.log('Deleted from Firestore:', dateString);
-                    }
-                } catch (err) {
-                    console.error('Firestore save error:', err);
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/productivity_tracker`, dateString);
+                if (status) {
+                    await setDoc(docRef, { status, timestamp: Timestamp.now() });
+                    console.log('Saved to Firestore:', dateString, status);
+                } else {
+                    await deleteDoc(docRef);
+                    console.log('Deleted from Firestore:', dateString);
                 }
-            } else {
-                // Local mode -> persist to localStorage
-                try {
-                    const key = `local_prod_${currentUserId}`;
-                    const storage = JSON.parse(localStorage.getItem(key) || '{}');
-                    if (status) storage[dateString] = status;
-                    else delete storage[dateString];
-                    localStorage.setItem(key, JSON.stringify(storage));
-                    
-                    // Manually trigger local render to simulate the delayed update
-                    loadLocalDataAndRender(currentUserId); 
-                    
-                    console.log('Local saved:', dateString, status);
-                } catch (err) {
-                    console.error('Local save error:', err);
-                }
+            } catch (err) {
+                console.error('Firestore save error:', err);
+                document.getElementById('status-message').textContent = 'Save Failed! Check console for security rule errors.';
             }
         };
         
         /**
-         * Loads data from localStorage and renders the calendar.
-         */
-        const loadLocalDataAndRender = (userId) => {
-             const key = `local_prod_${userId}`;
-             const storage = JSON.parse(localStorage.getItem(key) || '{}');
-             dateStatuses = storage;
-             renderCalendar(generateDateRange());
-             console.log('Local data loaded.');
-        }
-
-        /**
-         * Sets up the listener to fetch data from Firestore or localStorage.
+         * Sets up the listener to fetch data from Firestore.
          */
         const listenForUpdates = (userId) => {
             currentUserId = userId;
             const statusEl = document.getElementById('status-message');
 
-            if (useFirebase) {
-                const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/productivity_tracker`);
-                // Listen for changes in real-time (this naturally provides the delay)
-                onSnapshot(collectionRef, (snapshot) => {
-                    const newStatuses = {};
-                    snapshot.forEach(docSnap => {
-                        const d = docSnap.data();
-                        // Only accept the four valid status strings
-                        if (['dark-green', 'light-green', 'light-red', 'deep-red'].includes(d.status)) {
-                             newStatuses[docSnap.id] = d.status;
-                        }
-                    });
-                    dateStatuses = newStatuses;
-                    renderCalendar(generateDateRange());
-                    console.log('Firestore snapshot applied.');
-                }, (err) => {
-                    console.error('Snapshot error:', err);
-                    statusEl.textContent = 'Error syncing with Firestore (check console).';
+            const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/productivity_tracker`);
+            // Listen for changes in real-time (this naturally provides the delay)
+            onSnapshot(collectionRef, (snapshot) => {
+                const newStatuses = {};
+                snapshot.forEach(docSnap => {
+                    const d = docSnap.data();
+                    // Only accept the four valid status strings
+                    if (['dark-green', 'light-green', 'light-red', 'deep-red'].includes(d.status)) {
+                         newStatuses[docSnap.id] = d.status;
+                    }
                 });
-            } else {
-                // Initial load from local storage
-                loadLocalDataAndRender(userId);
-            }
+                dateStatuses = newStatuses;
+                renderCalendar(generateDateRange());
+                console.log('Firestore snapshot applied.');
+            }, (err) => {
+                console.error('Snapshot error:', err);
+                statusEl.textContent = 'Error syncing with Firestore (check console).';
+            });
         };
         
-        /**
-         * Initializes local mode when Firebase config is missing.
-         */
-        function initLocalMode(statusEl) {
-            // Create/get a stable local user id so data key is stable across page reloads
-            let localId = localStorage.getItem('prod_local_userid');
-            if (!localId) { localId = 'local-' + Math.random().toString(36).slice(2,10); localStorage.setItem('prod_local_userid', localId); }
-            currentUserId = localId;
-            isAuthReady = true;
-            document.getElementById('user-id').textContent = currentUserId + ' (local)';
-            statusEl.textContent = 'Local demo mode — data stored in this browser.';
-            listenForUpdates(currentUserId);
-        }
-
         /**
          * Main setup function.
          */
         const setup = async () => {
             const statusEl = document.getElementById('status-message');
             
-            if (useFirebase) {
-                // Cloud Sync Mode
-                try {
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    try { setLogLevel('debug'); } catch (e) { /* ignore */ } // Set log level
+            // Cloud Sync Mode
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                try { setLogLevel('debug'); } catch (e) { /* ignore */ } // Set log level
 
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            currentUserId = user.uid;
-                        } else {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                                currentUserId = auth.currentUser?.uid || null;
-                            } else {
-                                // Sign in anonymously for a unique ID tied to the Firebase project
-                                const anon = await signInAnonymously(auth);
-                                currentUserId = anon.user.uid;
-                            }
-                        }
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                    } else {
+                        // Sign in anonymously for a unique ID tied to the Firebase project
+                        const anon = await signInAnonymously(auth);
+                        currentUserId = anon.user.uid;
+                    }
 
-                        if (currentUserId) {
-                            isAuthReady = true;
-                            document.getElementById('user-id').textContent = currentUserId;
-                            statusEl.textContent = 'Connected to Firestore — ready.';
-                            listenForUpdates(currentUserId);
-                        }
-                    });
-                } catch (err) {
-                    console.error('Firebase init error, switching to local mode:', err);
-                    // Fallback if Firebase initialization fails
-                    useFirebase = false;
-                    initLocalMode(statusEl);
-                }
-            } else {
-                // Local Demo Mode
-                initLocalMode(statusEl);
+                    if (currentUserId) {
+                        isAuthReady = true;
+                        document.getElementById('user-id').textContent = currentUserId;
+                        statusEl.textContent = 'Connected to Firestore — ready.';
+                        listenForUpdates(currentUserId);
+                    }
+                });
+            } catch (err) {
+                console.error('FATAL Firebase init error:', err);
+                // If init fails, display a clear error
+                statusEl.textContent = 'CONNECTION FAILED: Check Firebase Config and Console Errors.';
+                document.getElementById('user-id').textContent = 'ERROR';
             }
         };
 
@@ -448,7 +385,7 @@
         <!-- Instructions and Status -->
         <div class="mb-4 p-3 bg-indigo-50 rounded-md border border-indigo-200">
             <div class="text-sm text-indigo-700 font-semibold">Instructions: Click to cycle through the 4 levels</div>
-            <ul class="text-sm text-gray-700 mt-2 list-disc list-inside space-y-1">
+            <ul class="list-disc list-inside text-sm text-gray-700 mt-2 space-y-1">
                 <li>$\to$ <span class="font-bold text-emerald-600">Dark Green:</span> Happy with my work (Maximum Productivity).</li>
                 <li>$\to$ <span class="font-bold text-emerald-400">Light Green:</span> Did work, but not to my satisfaction level.</li>
                 <li>$\to$ <span class="font-bold text-red-400">Light Red:</span> Did work, but very little (Minimal Productivity).</li>
@@ -475,3 +412,4 @@
 
 </body>
 </html>
+
