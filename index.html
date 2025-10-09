@@ -1,383 +1,485 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Productivity Chain Tracker (Google Sign-In Only)</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome for Google Icon -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJzL3m3M/w2l33gWJv2WcT1gTfJ2g2eK/T5O4pL+w5Y5d5T5Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        'current-day-blue': '#3b82f6', // Blue 500
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            min-height: 100vh;
-            padding: 1rem;
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Productivity Chain Tracker (Google Sign-In Only)</title>
 
-        .panel { width:100%; max-width:960px; margin:auto; }
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
 
-        #calendar-scroll {
-            max-height: 72vh;
-            overflow-y: auto;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            border: 1px solid #e5e7eb;
-        }
+<!-- Font Awesome -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+/>
 
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-            gap: 8px;
-            align-items: start;
-        }
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ["Inter", "sans-serif"],
+        },
+        colors: {
+          "current-day-blue": "#3b82f6",
+          // Adding specific color variables for CSS access
+          'dark-green': '#059669',
+          'light-green': '#a7f3d0',
+          'light-red': '#fecaca',
+          'deep-red': '#ef4444',
+        },
+      },
+    },
+  };
+</script>
 
-        .date-tile {
-            width: 100%;
-            padding-top: 100%;
-            position: relative;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: all .18s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            font-weight: 700;
-            user-select: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-            background-color: #ffffff;
-            color: #374151;
-        }
-        
-        .date-tile:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08); }
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
 
+  body {
+    font-family: "Inter", sans-serif;
+    background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 100%);
+    min-height: 100vh;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+  }
 
-        .date-tile-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
+  .panel {
+    width: 100%;
+    max-width: 960px;
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+  }
 
-        /* --- 4 LEVEL STATUS STYLES --- */
-        .status-dark-green { background-color: #059669; color: #ffffff !important; box-shadow: 0 6px 12px -6px rgba(5, 150, 105, 0.3); }
-        .status-light-green { background-color: #a7f3d0; color: #064e3b !important; box-shadow: 0 6px 12px -6px rgba(167, 243, 208, 0.3); }
-        .status-light-red { background-color: #fecaca; color: #7f1d1d !important; box-shadow: 0 6px 12px -6px rgba(254, 202, 202, 0.3); }
-        .status-deep-red { background-color: #ef4444; color: #ffffff !important; box-shadow: 0 6px 12px -6px rgba(239,68,68,0.3); }
-        /* --- END 4 LEVEL STATUS STYLES --- */
+  .panel:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
+  }
 
+  header {
+    background: linear-gradient(90deg, #2563eb, #4f46e5);
+    border-radius: 1rem 1rem 0 0;
+    color: white;
+    padding: 1.5rem;
+  }
 
-        .today { border: 3px solid #3b82f6; }
-        
-        .month-header {
-            grid-column: 1 / -1;
-            text-align: left;
-            margin-top: 0.5rem;
-            margin-bottom: 0.25rem;
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #111827;
-            position: sticky;
-            top: 0;
-            z-index: 8;
-            padding: 0.25rem 0.5rem;
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
-            border-radius: 6px;
-        }
-        
-        @media (max-width:640px) {
-            .calendar-grid { gap:6px; grid-template-columns: repeat(auto-fill, minmax(42px,1fr)); }
-        }
+  header h1 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
 
-    </style>
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, Timestamp, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  header p {
+    color: #e0e7ff;
+  }
 
-        // === FIREBASE CONFIGURATION (FOR CLOUD SYNC) ===
-        const firebaseConfig = {
-          apiKey: "AIzaSyD4xb2VjkVI6LBnfr_R0IMdRtMNnl5K2uI", // CORRECT API KEY
-          authDomain: "productivity-tracker-53afe.firebaseapp.com",
-          projectId: "productivity-tracker-53afe",
-          storageBucket: "productivity-tracker-53afe.appspot.com",
-          messagingSenderId: "1021027927345",
-          appId: "1:1021027927345:web:38ead23d9f561aa1121c10",
-        };
-        
-        const appId = firebaseConfig.projectId; 
-        
-        // State
-        let app, db, auth;
-        let currentUserId = null;
-        let isAuthReady = false;
-        let dateStatuses = {};
+  #auth-controls button {
+    transition: all 0.25s ease;
+  }
 
-        const DATA_COLLECTION_NAME = 'productivity_tracker';
-        
-        // --- AUTHENTICATION FUNCTIONS ---
-        const googleProvider = new GoogleAuthProvider();
+  #auth-controls button:hover {
+    transform: scale(1.05);
+  }
 
-        const signInWithGoogle = async () => {
-            try {
-                // Signs the user in with Google using a popup.
-                await signInWithPopup(auth, googleProvider);
-            } catch (error) {
-                console.error("Google Sign-In Failed:", error);
-                document.getElementById('status-message').textContent = 'Sign-In Failed. Check console/network.';
-            }
-        };
+  #calendar-scroll {
+    max-height: 72vh;
+    overflow-y: auto;
+    background: #f9fafb;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+  }
 
-        const handleSignOut = async () => {
-            try {
-                // Signs the user out. onAuthStateChanged listener handles UI update.
-                await signOut(auth);
-            } catch (error) {
-                console.error("Sign-Out Failed:", error);
-            }
-        };
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 10px;
+  }
 
-        // --- UTILITY AND DATA FUNCTIONS ---
+  .month-header {
+    grid-column: 1 / -1;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-top: 1rem;
+    color: #1e293b;
+    background: linear-gradient(90deg, #e0f2fe, #f0f9ff);
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
 
-        const formatDate = d => d.toISOString().split('T')[0];
+  .date-tile {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;
+    border-radius: 12px;
+    cursor: pointer;
+    background-color: white;
+    font-weight: 700;
+    color: #374151;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    /* Default inactive state */
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  
+  .date-tile.active {
+      opacity: 1;
+      pointer-events: auto;
+  }
 
-        const generateDateRange = () => {
-            const startDate = new Date(2025, 8, 27); 
-            startDate.setHours(0,0,0,0); 
-            const endDate = new Date(startDate.getFullYear() + (startDate.getMonth() > 5 ? 1 : 0), 5, 30);
-            endDate.setHours(0,0,0,0);
-            
-            const out = []; 
-            let cur = new Date(startDate);
-            while (cur <= endDate) { out.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
-            return out;
-        };
-        
-        const renderCalendar = (dates) => {
-            const container = document.getElementById('calendar-container');
-            if (!container) return;
-            container.innerHTML = '';
-            const todayStr = formatDate(new Date());
-            let currentMonth = null;
-            const signedIn = !!currentUserId;
+  .date-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+  }
 
-            dates.forEach(date => {
-                const ds = formatDate(date);
-                const month = date.getMonth() + '-' + date.getFullYear(); 
+  .date-tile-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 
-                if (currentMonth !== month) {
-                    const mh = document.createElement('div');
-                    mh.className = 'month-header';
-                    mh.textContent = date.toLocaleDateString('en-US', { month:'long', year:'numeric' });
-                    container.appendChild(mh);
-                    currentMonth = month;
-                }
+  /* --- Enhanced Status Colors --- */
+  .status-dark-green {
+    background: linear-gradient(145deg, #047857, #059669);
+    color: #ffffff !important;
+    box-shadow: 0 8px 16px rgba(5, 150, 105, 0.35);
+  }
 
-                const tile = document.createElement('div');
-                tile.className = 'date-tile';
-                tile.dataset.date = ds;
-                if (ds === todayStr) tile.classList.add('today');
+  .status-light-green {
+    background: linear-gradient(145deg, #a7f3d0, #6ee7b7);
+    color: #064e3b !important;
+  }
 
-                const content = document.createElement('div');
-                content.className = 'date-tile-content';
-                content.textContent = date.getDate();
-                tile.appendChild(content);
+  .status-light-red {
+    background: linear-gradient(145deg, #fecaca, #fca5a5);
+    color: #7f1d1d !important;
+  }
 
-                const st = dateStatuses[ds];
-                if (st === 'dark-green') tile.classList.add('status-dark-green');
-                else if (st === 'light-green') tile.classList.add('status-light-green');
-                else if (st === 'light-red') tile.classList.add('status-light-red');
-                else if (st === 'deep-red') tile.classList.add('status-deep-red');
+  .status-deep-red {
+    background: linear-gradient(145deg, #ef4444, #b91c1c);
+    color: #ffffff !important;
+  }
 
-                // Only allow clicking if signed in
-                if (signedIn) {
-                    tile.addEventListener('click', handleClick);
-                } else {
-                    // Visually indicate tiles are inactive if signed out
-                    tile.style.cursor = 'not-allowed';
-                    tile.style.opacity = '0.5';
-                    tile.style.pointerEvents = 'none';
-                }
-                
-                container.appendChild(tile);
-            });
-        };
+  .today {
+    outline: 3px solid #3b82f6;
+    outline-offset: -3px;
+  }
 
-        const handleClick = (event) => {
-            if (!isAuthReady || !currentUserId) return;
-            const tile = event.currentTarget;
-            const dateString = tile.dataset.date;
+  .info-box {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+    padding: 1rem;
+    border-radius: 8px;
+  }
 
-            const cur = dateStatuses[dateString] || null;
-            let next = null;
-            
-            switch (cur) {
-                case null: next = 'dark-green'; break;
-                case 'dark-green': next = 'light-green'; break;
-                case 'light-green': next = 'light-red'; break;
-                case 'light-red': next = 'deep-red'; break;
-                case 'deep-red': next = null; break;
-                default: next = 'dark-green'; 
-            }
-            saveStatus(dateString, next);
-        };
+  #status-message {
+    background: linear-gradient(90deg, #e0f2fe, #f0f9ff);
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 500;
+  }
 
-        const saveStatus = async (dateString, status) => {
-            try {
-                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/${DATA_COLLECTION_NAME}`, dateString);
-                if (status) {
-                    await setDoc(docRef, { status, timestamp: Timestamp.now() });
-                } else {
-                    await deleteDoc(docRef);
-                }
-            } catch (err) {
-                console.error('Firestore save error:', err);
-                document.getElementById('status-message').textContent = 'Save Failed! Check Firebase Security Rules.';
-            }
-        };
-        
-        const listenForUpdates = (userId) => {
-            currentUserId = userId;
-            const statusEl = document.getElementById('status-message');
+  @media (max-width: 640px) {
+    body {
+      padding: 1rem;
+    }
 
-            const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/${DATA_COLLECTION_NAME}`);
-            onSnapshot(collectionRef, (snapshot) => {
-                const newStatuses = {};
-                snapshot.forEach(docSnap => {
-                    const d = docSnap.data();
-                    if (['dark-green', 'light-green', 'light-red', 'deep-red'].includes(d.status)) {
-                         newStatuses[docSnap.id] = d.status;
-                    }
-                });
-                dateStatuses = newStatuses;
-                renderCalendar(generateDateRange());
-                statusEl.textContent = 'Connected to Firestore — Data synchronized.';
-            }, (err) => {
-                console.error('Snapshot error:', err);
-                statusEl.textContent = 'Error syncing with Firestore (check console).';
-            });
-        };
-        
-        // --- Initialization ---
-        const setup = async () => {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            try { setLogLevel('debug'); } catch (e) { /* ignore */ }
+    .calendar-grid {
+      gap: 6px;
+      grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    }
 
-            // Set up event listeners for the new buttons
-            document.getElementById('google-sign-in-btn').addEventListener('click', signInWithGoogle);
-            document.getElementById('sign-out-btn').addEventListener('click', handleSignOut);
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    // User is signed in (Google)
-                    currentUserId = user.uid;
-                    isAuthReady = true;
-                    document.getElementById('user-name').textContent = user.displayName || 'Google User';
-                    document.getElementById('user-id-display').textContent = user.uid;
-                    
-                    document.getElementById('auth-prompt').classList.add('hidden');
-                    document.getElementById('user-info').classList.remove('hidden');
-
-                    listenForUpdates(currentUserId);
-                } else {
-                    // User is signed out
-                    currentUserId = null;
-                    isAuthReady = false;
-                    dateStatuses = {}; // Clear status on sign-out
-                    
-                    document.getElementById('auth-prompt').classList.remove('hidden');
-                    document.getElementById('user-info').classList.add('hidden');
-                    document.getElementById('status-message').textContent = 'Please sign in with Google to start tracking.';
-                    
-                    renderCalendar(generateDateRange()); // Render empty, inactive calendar
-                }
-            });
-        };
-
-        window.addEventListener('load', setup);
-    </script>
+    header h1 {
+      font-size: 1.6rem;
+    }
+  }
+</style>
 </head>
-<body class="flex justify-center items-start">
 
-    <div class="panel p-6 bg-white shadow-lg rounded-xl">
-        <header class="mb-4 pb-3 border-b flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-extrabold text-gray-800">The Productivity Chain</h1>
-                <p class="text-sm text-gray-500 mt-1">Cross-device consistency via Google Sign-In.</p>
-            </div>
-            
-            <div id="auth-controls" class="text-right">
-                <!-- User Info (Visible after sign-in) -->
-                <div id="user-info" class="hidden text-right">
-                    <p class="text-sm font-semibold text-gray-700">
-                        Welcome, <span id="user-name" class="text-blue-600"></span>!
-                    </p>
-                    <button id="sign-out-btn" class="mt-1 text-xs text-red-500 hover:text-red-700 font-medium transition duration-150">
-                        Sign Out
-                    </button>
-                </div>
+<body>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, Timestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    // === FIREBASE CONFIGURATION ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyD4xb2VjkVI6LBnfr_R0IMdRtMNnl5K2uI", // CONFIRMED API KEY
+      authDomain: "productivity-tracker-53afe.firebaseapp.com",
+      projectId: "productivity-tracker-53afe",
+      storageBucket: "productivity-tracker-53afe.appspot.com",
+      messagingSenderId: "1021027927345",
+      appId: "1:1021027927345:web:38ead23d9f561aa1121c10",
+    };
+    
+    const appId = firebaseConfig.projectId; 
+    const PROGRESS_COLLECTION_NAME = 'single_chain_tracker'; // Dedicated collection name
+    
+    // State
+    let app, db, auth;
+    let currentUserId = null;
+    let isAuthReady = false;
+    let dateStatuses = {}; // Progress for the calendar: { 'YYYY-MM-DD': 'dark-green' }
 
-                <!-- Sign-in Prompt (Visible when signed out) -->
-                <div id="auth-prompt">
-                    <button id="google-sign-in-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 flex items-center">
-                        <i class="fab fa-google mr-2"></i>
-                        Sign in with Google
-                    </button>
-                </div>
-            </div>
-        </header>
+    // --- AUTHENTICATION FUNCTIONS ---
+    const googleProvider = new GoogleAuthProvider();
 
-        <!-- Instructions and Status -->
-        <div class="mb-4 p-3 bg-indigo-50 rounded-md border border-indigo-200">
-            <div class="text-sm text-indigo-700 font-semibold">Instructions: Click to cycle through the 4 levels</div>
-            <ul class="list-disc list-inside text-sm text-gray-700 mt-2 space-y-1">
-                <li>&rarr; <span class="font-bold text-emerald-600">Dark Green:</span> Happy with my work (Maximum Productivity).</li>
-                <li>&rarr; <span class="font-bold text-emerald-400">Light Green:</span> Did work, but not to my satisfaction level.</li>
-                <li>&rarr; <span class="font-bold text-red-400">Light Red:</span> Did work, but very little (Minimal Productivity).</li>
-                <li>&rarr; <span class="font-bold text-red-600">Deep Red:</span> Wasted time (Bad Work Day).</li>
-                <li>&rarr; Neutral (clears the status).</li>
-            </ul>
-        </div>
+    const signInWithGoogle = async () => {
+        try {
+            await signInWithPopup(auth, googleProvider);
+        } catch (error) {
+            console.error("Google Sign-In Failed:", error);
+            document.getElementById('status-message').textContent = 'Sign-In Failed. Check console/network.';
+        }
+    };
+
+    const handleSignOut = async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Sign-Out Failed:", error);
+        }
+    };
+
+    // --- DATA MANAGEMENT FUNCTIONS ---
+
+    const formatDate = d => d.toISOString().split('T')[0];
+
+    const generateDateRange = () => {
+        // Fixed date range: Sept 27, 2025 to June 30, 2026
+        const startDate = new Date(2025, 8, 27); 
+        startDate.setHours(0,0,0,0); 
+        const endDate = new Date(2026, 5, 30);
+        endDate.setHours(0,0,0,0);
         
-        <!-- User ID & Status Message -->
-        <div class="text-xs text-gray-500 mb-3 flex items-center">
-            <span id="status-message" class="font-medium text-blue-600">Initializing...</span>
-            <span id="user-info-detail" class="ml-3">
-                User: <span id="user-name" class="font-medium text-gray-700">—</span> (ID: <span id="user-id-display" class="font-mono">—</span>)
-            </span>
+        const out = []; 
+        let cur = new Date(startDate);
+        while (cur <= endDate) { 
+            out.push(new Date(cur)); 
+            cur.setDate(cur.getDate()+1); 
+        }
+        return out;
+    };
+    
+    const renderCalendar = (dates, signedIn) => {
+        const container = document.getElementById('calendar-container');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        const todayStr = formatDate(new Date());
+        let currentMonth = null;
+        const statusMap = { 'dark-green': 'status-dark-green', 'light-green': 'status-light-green', 'light-red': 'status-light-red', 'deep-red': 'status-deep-red' };
+
+        dates.forEach(date => {
+            const ds = formatDate(date);
+            const month = date.getMonth() + '-' + date.getFullYear(); 
+
+            if (currentMonth !== month) {
+                const mh = document.createElement('div');
+                mh.className = 'month-header';
+                mh.textContent = date.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+                container.appendChild(mh);
+                currentMonth = month;
+            }
+
+            const status = dateStatuses[ds];
+            const statusClass = status ? statusMap[status] : '';
+            
+            const tile = document.createElement('div');
+            // Tile is only clickable/active if signed in AND the date is today or in the past
+            const isActive = signedIn && ds <= todayStr;
+            const activeClass = isActive ? 'active' : '';
+
+            tile.className = `date-tile ${statusClass} ${activeClass}`;
+            tile.dataset.date = ds;
+            
+            if (ds === todayStr) tile.classList.add('today');
+
+            const content = document.createElement('div');
+            content.className = 'date-tile-content';
+            content.textContent = date.getDate();
+            tile.appendChild(content);
+
+            if (isActive) {
+                tile.addEventListener('click', () => handleCalendarClick(ds, tile));
+            }
+            
+            container.appendChild(tile);
+        });
+    };
+
+    const handleCalendarClick = (dateString, tile) => {
+        if (!isAuthReady || !currentUserId) return;
+
+        const cur = dateStatuses[dateString] || null;
+        let next = null;
+        
+        // 4-level cycle logic
+        switch (cur) {
+            case null: next = 'dark-green'; break;
+            case 'dark-green': next = 'light-green'; break;
+            case 'light-green': next = 'light-red'; break;
+            case 'light-red': next = 'deep-red'; break;
+            case 'deep-red': next = null; break;
+            default: next = 'dark-green'; 
+        }
+        
+        // Optimistic UI Update 
+        dateStatuses[dateString] = next;
+        tile.classList.remove('status-dark-green', 'status-light-green', 'status-light-red', 'status-deep-red');
+        if (next) {
+            tile.classList.add(`status-${next}`);
+        }
+
+        saveStatus(dateString, next);
+    };
+
+    const saveStatus = async (dateString, status) => {
+        try {
+            const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/${PROGRESS_COLLECTION_NAME}`, dateString);
+            
+            if (status) {
+                await setDoc(docRef, { status, timestamp: Timestamp.now() });
+            } else {
+                await deleteDoc(docRef);
+            }
+            
+            document.getElementById('status-message').textContent = `Status updated for ${dateString}.`;
+        } catch (err) {
+            console.error('Firestore save error:', err);
+            document.getElementById('status-message').textContent = 'Save Failed! Check console for security rule errors.';
+        }
+    };
+    
+    const listenForProgress = (userId) => {
+        const statusEl = document.getElementById('status-message');
+        
+        const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/${PROGRESS_COLLECTION_NAME}`);
+        onSnapshot(collectionRef, (snapshot) => {
+            const newStatuses = {};
+            snapshot.forEach(docSnap => {
+                const d = docSnap.data();
+                if (['dark-green', 'light-green', 'light-red', 'deep-red'].includes(d.status)) {
+                    newStatuses[docSnap.id] = d.status;
+                }
+            });
+            dateStatuses = newStatuses;
+            renderCalendar(generateDateRange(), true); // Re-render active calendar
+            statusEl.textContent = 'Connected to Firestore — Data synchronized.';
+        }, (err) => {
+            console.error('Snapshot error:', err);
+            statusEl.textContent = 'Error syncing with Firestore (check console).';
+        });
+    };
+    
+    // --- Initialization ---
+    const setup = async () => {
+        // Initialize Firebase services
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        // Bind functions for HTML use
+        window.signInWithGoogle = signInWithGoogle;
+        window.handleSignOut = handleSignOut;
+
+        onAuthStateChanged(auth, (user) => {
+            const dates = generateDateRange();
+            
+            if (user) {
+                // USER IS SIGNED IN
+                currentUserId = user.uid;
+                isAuthReady = true;
+                
+                document.getElementById('user-name').textContent = user.displayName || 'Google User';
+                document.getElementById('user-id-display').textContent = user.uid.substring(0, 10) + '...'; // Shorten ID for display
+                
+                document.getElementById('auth-prompt').classList.add('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+
+                listenForProgress(currentUserId);
+            } else {
+                // USER IS SIGNED OUT
+                currentUserId = null;
+                isAuthReady = false;
+                dateStatuses = {};
+
+                document.getElementById('auth-prompt').classList.remove('hidden');
+                document.getElementById('user-info').classList.add('hidden');
+                document.getElementById('status-message').textContent = 'Please sign in with Google to start tracking.';
+                
+                renderCalendar(dates, false); // Render inactive calendar
+            }
+        });
+    };
+
+    window.addEventListener('load', setup);
+  </script>
+  
+  <div class="panel">
+    <header class="flex justify-between items-center">
+      <div>
+        <h1 class="text-3xl">The Productivity Chain</h1>
+        <p class="text-sm mt-1">Cross-device consistency via Google Sign-In.</p>
+      </div>
+
+      <div id="auth-controls" class="text-right">
+        <div id="user-info" class="hidden">
+          <p class="text-sm font-semibold">
+            Welcome, <span id="user-name" class="text-white"></span>!
+          </p>
+          <button
+            id="sign-out-btn"
+            onclick="window.handleSignOut()"
+            class="mt-1 text-xs text-red-100 hover:text-white font-medium"
+          >
+            Sign Out
+          </button>
         </div>
 
-        <!-- Scroll wrapper; month headers are sticky within this -->
-        <div id="calendar-scroll" class="rounded-md bg-white">
-            <div id="calendar-container" class="calendar-grid p-3">
-                <div class="month-header">Loading calendar…</div>
-            </div>
+        <div id="auth-prompt">
+          <button
+            id="google-sign-in-btn"
+            onclick="window.signInWithGoogle()"
+            class="bg-white text-blue-600 font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-50 flex items-center"
+          >
+            <i class="fab fa-google mr-2"></i>
+            Sign in with Google
+          </button>
         </div>
+      </div>
+    </header>
 
+    <div class="p-6 space-y-4">
+      <div class="info-box">
+        <div class="font-semibold">Instructions:</div>
+        <ul class="list-disc list-inside mt-2 text-sm space-y-1">
+          <li><span class="font-bold text-emerald-600">Dark Green:</span> Maximum productivity.</li>
+          <li><span class="font-bold text-emerald-400">Light Green:</span> Good day, but not best.</li>
+          <li><span class="font-bold text-red-400">Light Red:</span> Low output day.</li>
+          <li><span class="font-bold text-red-600">Deep Red:</span> Wasted day.</li>
+          <li>Neutral (clears the status).</li>
+        </ul>
+      </div>
+
+      <div class="text-xs text-gray-600 flex items-center gap-2">
+        <span id="status-message">Initializing...</span>
+        <span>User ID: <span id="user-id-display" class="font-mono">—</span></span>
+      </div>
+
+      <div id="calendar-scroll">
+        <div id="calendar-container" class="calendar-grid p-3">
+          <div class="month-header">Loading calendar…</div>
+        </div>
+      </div>
     </div>
-
+  </div>
 </body>
 </html>
