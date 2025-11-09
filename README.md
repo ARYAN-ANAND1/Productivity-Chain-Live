@@ -21,10 +21,10 @@ A daily productivity tracker with Google Sign-In and Firebase sync. Track your p
 ## Setup
 
 1. Clone the repository
-2. Create a `firebase-config.js` file with your Firebase credentials:
+2. Update the Firebase configuration in `index.html` with your own credentials:
 
 ```javascript
-export const firebaseConfig = {
+const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
   projectId: "YOUR_PROJECT_ID",
@@ -34,11 +34,11 @@ export const firebaseConfig = {
 };
 ```
 
-3. Open `index.html` in your browser
+3. Open `index.html` directly in your browser
 
-## Security
+## Security Note
 
-The `firebase-config.js` file is gitignored to protect your API keys. Never commit this file to version control.
+Firebase client-side API keys are safe to expose in public code as they're meant for client apps. However, ensure your Firebase security rules are properly configured to protect your data.
 
 ## Tech Stack
 
