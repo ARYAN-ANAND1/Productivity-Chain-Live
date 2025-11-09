@@ -1,0 +1,17 @@
+# Environment variables and sensitive data
+.env
+.env.local
+config.js
+firebase-config.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
