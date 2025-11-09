@@ -208,7 +208,16 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot, collection, Timestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { firebaseConfig } from "./firebase-config.js";
+    
+    // === FIREBASE CONFIGURATION ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyD4xb2VjkVI6LBnfr_R0IMdRtMNnl5K2uI",
+      authDomain: "productivity-tracker-53afe.firebaseapp.com",
+      projectId: "productivity-tracker-53afe",
+      storageBucket: "productivity-tracker-53afe.appspot.com",
+      messagingSenderId: "1021027927345",
+      appId: "1:1021027927345:web:38ead23d9f561aa1121c10",
+    };
     
     const appId = firebaseConfig.projectId; 
     const PROGRESS_COLLECTION_NAME = 'single_chain_tracker'; // Dedicated collection name

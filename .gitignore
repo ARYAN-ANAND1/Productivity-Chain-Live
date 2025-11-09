@@ -4,6 +4,9 @@
 config.js
 firebase-config.js
 
+# Don't track changes to Firebase config in index.html
+# (config is embedded but we'll ignore the whole file from tracking)
+
 # OS files
 .DS_Store
 Thumbs.db
